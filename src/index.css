@@ -14,9 +14,19 @@ code {
 .nav-top{
   width: 100%;
   background-color: pink;
+  padding: 1rem 0 1rem 0;
+  text-align: left;
+}
+.nav-top > p{
+  display: inline-block;
+  font-size: large;
+  font-weight: 700;
+  margin: 0 0 0 1rem;
+  color: white;
+
 }
 .leaflet-container{
-  height: 100vh;
+  height: calc(100vh - 56px);
 }
 .crosshair-cursor-enabled{
   cursor: default !important;
