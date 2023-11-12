@@ -3,14 +3,14 @@ import { useEffect } from 'react'
 import { useMap } from 'react-leaflet'
 
 class GeoJSONWorker{
-    constructor(url, style){
+    constructor(url, style, vtOptions){
         this.worker = new Worker(new URL('../workers/GeoJSONLayer.worker', import.meta.url))
         this.worker.addEventListener('message', this.onReceive.bind(this))
         this.listeners = new Map()
-        this.__init(url, style)
+        this.__init(url, style, vtOptions)
     }
-    __init(url, style){
-        this.post({ type: 'init', data: { url, style } })
+    __init(url, style, vtOptions){
+        this.post({ type: 'init', data: { url, style, vtOptions } })
     }
     listen(event, callback){
         this.listeners.set(event, callback)
@@ -43,7 +43,7 @@ const GeoLayerGrid = L.GridLayer.extend({
     initialize: function(url, options) {
         L.setOptions(this, options)
         this.tileMapped = new Map()
-        this.worker = new GeoJSONWorker(url, this.options.style)
+        this.worker = new GeoJSONWorker(url, this.options.style, this.options.vtOptions)
 
     },
     createTile: function(coords){
@@ -66,9 +66,17 @@ const GeoLayerGrid = L.GridLayer.extend({
 export default function GeoJSONLayer({url, options}){
     const map = useMap()
     useEffect(() => {
-        const layer = new GeoLayerGrid(url, options)
+        L.DomUtil.addClass(map._container, 'crosshair-cursor-enabled')
+        const layer = new GeoLayerGrid(url, {
+            vtOptions: {
+                maxZoom: map.maxZoom,
+                tolerance: 0,
+            },
+            ...options
+        })
         map.addLayer(layer)
         return () => {
+            L.DomUtil.removeClass(map._container, 'crosshair-cursor-enabled')
             map.removeLayer(layer)
             layer.close() // cleanup
         }

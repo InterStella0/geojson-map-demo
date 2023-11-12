@@ -3,6 +3,8 @@ import geojsonvt from "geojson-vt";
 
 var mappedVectorTile = null
 var waitForFetch = waitFor()
+var styleSet = {}
+const FULL_CIRCLE = 2 * Math.PI  // 360 deg
 // eslint-disable-next-line no-restricted-globals
 self.addEventListener('message', e => {
     const received = e.data
@@ -21,11 +23,11 @@ function waitFor(){
 }
 function processMessage(type, data){
     switch(type){
-        case 'init':
-            console.log("style", data.style)
-            fetchingJson(data.url)
+        case 'init':{
+            fetchingJson(data.url, data.vtOptions)
+            styleSet = data.style ?? {}
             break;
-        case 'tile':
+        }case 'tile':
             handleTile(data.canvas, data.coords)
             break;
         default:
@@ -33,10 +35,10 @@ function processMessage(type, data){
             break;
     }
 }
-async function fetchingJson(url){
+async function fetchingJson(url, options){
     const data = await fetch(url)
     const geojson = await data.json()
-    mappedVectorTile = geojsonvt(geojson)
+    mappedVectorTile = geojsonvt(geojson, options)
     waitForFetch.set()
 }
 async function handleTile(canvas, coords){
@@ -62,23 +64,37 @@ function featureDraw(ctx, feature){
     const ratio = 1 / 16
     ctx.beginPath()
     setStyle(ctx)
-    if (type === 2 || type === 3){
-        for (let i = 0; i < maxLength; i++){
-            const rings = geometries[i]
-            const maxRingLength = rings.length
-            if (maxRingLength > 0)
-                ctx.moveTo(rings[0][0] * ratio, rings[0][1] * ratio)
-    
-            for(let j = 1; j < maxRingLength; j++)
-                ctx.lineTo(rings[j][0] * ratio, rings[j][1] * ratio)
-        }
+    switch(type){
+        case 1:
+            for (let i = 0; i < maxLength; i++)
+                ctx.arc(geometries[i][0] * ratio, geometries[i][1] * ratio, styleSet.radius ?? 2, 0, FULL_CIRCLE, true)
+            break
+        case 2:
+        case 3:
+            for (let i = 0; i < maxLength; i++){
+                const rings = geometries[i]
+                const maxRingLength = rings.length
+                if (maxRingLength > 0)
+                    ctx.moveTo(rings[0][0] * ratio, rings[0][1] * ratio)
+        
+                for(let j = 1; j < maxRingLength; j++)
+                    ctx.lineTo(rings[j][0] * ratio, rings[j][1] * ratio)
+            }
+            break
+        default:
+            break
     }
+    if (type === 1 || type === 3)
+        ctx.fill('evenodd')
+
+    
     ctx.stroke()
 
 }
 function setStyle(ctx){
-    ctx.lineWidth = 5
-    ctx.strokeStyle = 'rgba(0, 0, 0)'
+    ctx.lineWidth = styleSet.width ?? 2
+    ctx.fillStyle = styleSet.fill ?? 'pink'
+    ctx.strokeStyle = styleSet.stroke ?? 'cyan'
 }
 
 function post(type, data){
