@@ -11,3 +11,10 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+.nav-top{
+  width: 100%;
+  background-color: pink;
+}
+.leaflet-container{
+  height: 100vh;
+}
