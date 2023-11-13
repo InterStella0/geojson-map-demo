@@ -32,15 +32,47 @@ function processMessage(type, data){
         }case 'tile':
             handleTile(data.canvas, data.coords)
             break;
+        case 'hover':
         case 'click':
-            handleClick(data.latlng)
+            if (!originalData)
+                return
+            handleClickOrHover(data.latlng, type)
             break;
         default:
             console.warn(`Ignored event type: ${type}`)
             break;
     }
 }
+function isLineIntersectPoint(point, linestring){
+    const deviation = .01
+    const centerPoint = point.coordinates
+    let coordinates = [linestring.coordinates]
+    if (linestring.type === "MultiLineString")
+        coordinates = coordinates[0]
+    const pointLineString = {
+        "type": "LineString",
+        "coordinates": [
+          [centerPoint[0], centerPoint[1]], // Center point
+          [centerPoint[0], centerPoint[1] + deviation], // Up
+          [centerPoint[0], centerPoint[1] - deviation], // Down
+          [centerPoint[0] + deviation, centerPoint[1]], // Right
+          [centerPoint[0] - deviation, centerPoint[1]]  // Left
+        ]
+    }
+    for(let i = 0; i < coordinates.length; i++){
+        const line = {
+            type: 'LineString',
+            coordinates: coordinates[i]
+        }
+        if (geojsonUtils.lineStringsIntersect(line, pointLineString))
+            return true
+    }
+    return false
+
+}
 function pointToGeoJSON(p, geojson) { // Copied from leafletPip but modified
+    // This function is intended to only support singular type, i.e you cannot mix Point and Linestring in a 
+    // single geojson featurecollection.
     if (typeof p.lat === 'number')
         p = [p.lng, p.lat];
 
@@ -50,13 +82,41 @@ function pointToGeoJSON(p, geojson) { // Copied from leafletPip but modified
         type: 'Point',
         coordinates: p
     }
-    for(let i = 0; i < maxLength; i++)
-        if (geojsonUtils.pointInPolygon(point, features[i].geometry))
-            return features[i]
+    const radius = 1000
+    const geomType = maxLength > 0? features[0].geometry?.type: 'empty'
+    switch(geomType.toLowerCase()){
+        case 'multipolygon':
+        case 'polygon':
+            for(let i = 0; i < maxLength; i++){
+                if (geojsonUtils.pointInPolygon(point, features[i].geometry))
+                    return features[i]
+            }
+            break
+        case 'multilinestring':
+        case 'linestring':
+            for(let i = 0; i < maxLength; i++){
+                if (isLineIntersectPoint(point, features[i].geometry, radius))
+                    return features[i]
+            }
+            break;
+        case 'multipoint':
+        case 'point':
+            for(let i = 0; i < maxLength; i++){
+                if (geojsonUtils.pointDistance(point, features[i].geometry) <= radius)
+                    return features[i]
+            }
+            break;
+        default:
+            console.warn("unknown type: ", geomType)
+            break
+    }
+
+
+    
 }
-function handleClick(latlng){
+function handleClickOrHover(latlng, type){
     const json = pointToGeoJSON(latlng, originalData)
-    post('click', {feature: json, latlng})
+    post(type, {feature: json, latlng})
 }
 async function fetchingJson(url, options){
     const data = await fetch(url)

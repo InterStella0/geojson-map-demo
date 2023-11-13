@@ -12,8 +12,12 @@ function getLayerStyle(){
         color: 'cyan', // applies to all
         weight: 1, // applies to all
         radius: 5, // applies to point
-        highlight: {
+        click: {
             color: 'blue',
+            fillColor: 'pink'
+        },
+        hover: {
+            color: 'purple',
             fillColor: 'pink'
         }
     }
@@ -21,7 +25,6 @@ function getLayerStyle(){
 function popupConfig(){
     return {
         popup: (feature) => {
-            console.log("FEATURE", feature)
             const d = L.DomUtil.create('table')
             L.DomUtil.addClass(d, "field-table")
             const tableHeadRow = L.DomUtil.create('tr')
@@ -58,7 +61,7 @@ export default function Map(){
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            <GeoJSONLayer url={url} options={{style: layerStyle, callbackConfig}} />
+            <GeoJSONLayer url={url} options={{style: layerStyle, callbackConfig, handleHover: true}} />
         </MapContainer>
     </>
 }

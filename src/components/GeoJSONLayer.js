@@ -31,6 +31,9 @@ class GeoJSONWorker{
     click(latlng){
         this.post({ type: 'click', data: { latlng } })
     }
+    hover(latlng){
+        this.post({ type: 'hover', data: { latlng } })
+    }
     renderTile(coords, canvas){
         this.post({
             type: 'tile',
@@ -48,10 +51,15 @@ const GeoLayerGrid = L.GridLayer.extend({
         this.tileMapped = new Map()
         this.worker = new GeoJSONWorker(url, this.options.style, this.options.vtOptions)
         this.worker.listen('click', this.featureClicked.bind(this))
+        if (this.options.handleHover)
+            this.worker.listen('hover', this.hoverFeature.bind(this))
         this.clickCallback = this.onClickMap.bind(this)
-        this.highlightLayer = null
+        this.highlightLayers = {hover: null, click: null}
         this.map = null
         this.bindedPopup = this.options.callbackConfig?.popup
+        this._mouseMoveTimeout = null
+        this.moveMouseCallback = this.onMouseMove.bind(this)
+        this.MOUSE_END_DELAY = options.mouseEndDelay ?? 10 // To detect when the mouse ends in ms. Set it to high for better performance
     },
     onClickMap: function(e){
         const latlng = e.latlng
@@ -60,27 +68,38 @@ const GeoLayerGrid = L.GridLayer.extend({
     bindPopup: function(callback){
         this.bindedPopup = callback
     },
+    onMouseMoveEnd: function(e){
+        this.worker.hover(e.latlng)
+    },
+    onMouseMove: function(e){
+        clearTimeout(this._mouseMoveTimeout);
+        this._mouseMoveTimeout = setTimeout(() => this.onMouseMoveEnd(e), this.MOUSE_END_DELAY);
+    },
     onAdd: function(map){
         L.GridLayer.prototype.onAdd.apply(this, map)
         map.on('click', this.clickCallback)
+
+        if (this.options.handleHover)
+            map.on('mousemove', this.moveMouseCallback)
         this.map = map		
         L.DomUtil.addClass(map._container, 'crosshair-cursor-enabled')
     },
     onRemove: function(map){
         L.GridLayer.prototype.onRemove.call(this, map)
         this.ensureRemoveHighlight()
+        map.off('mousemove', this.moveMouseCallback)
         map.off('click', this.clickCallback)
         L.DomUtil.removeClass(map._container, 'crosshair-cursor-enabled')
     },
     dispatchClick: function(latlng){
         this.worker.click(latlng)
     },
-    ensureRemoveHighlight: function(){
-        if (this.highlightLayer)
-            this.map.removeLayer(this.highlightLayer)
+    ensureRemoveHighlight: function(type){
+        if (this.highlightLayers[type])
+            this.map.removeLayer(this.highlightLayers[type])
     },
-    highlightFeature: function(feature){
-        this.ensureRemoveHighlight()
+    highlightFeature: function(feature, type){
+        this.ensureRemoveHighlight(type)
         if (!feature)
             return
 
@@ -88,12 +107,19 @@ const GeoLayerGrid = L.GridLayer.extend({
             type: 'FeatureCollection',
             features: [feature]
         }
-        this.highlightLayer = new L.geoJson(featureCollection, this.options.style.highlight)
-        this.map.addLayer(this.highlightLayer)
-
+        this.highlightLayers[type] = new L.geoJson(featureCollection, {
+            ...this.options.style[type], 
+            pointToLayer: (point, latlng) => {
+                return L.circleMarker(latlng, this.options.style[type])
+            }
+        })
+        this.map.addLayer(this.highlightLayers[type])
+    },
+    hoverFeature: function({ feature }){
+        this.highlightFeature(feature, 'hover')
     },
     featureClicked: function({feature, latlng}){
-        this.highlightFeature(feature)
+        this.highlightFeature(feature, 'click')
         if (!this.bindedPopup || !feature)
             return
 
