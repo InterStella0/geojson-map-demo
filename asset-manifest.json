@@ -1,17 +1,17 @@
 {
   "files": {
     "main.css": "/geojson-map-demo/static/css/main.5127c13f.css",
-    "main.js": "/geojson-map-demo/static/js/main.b34db498.js",
+    "main.js": "/geojson-map-demo/static/js/main.2c3f27ab.js",
     "static/js/474.4c85469f.chunk.js": "/geojson-map-demo/static/js/474.4c85469f.chunk.js",
     "static/js/787.89a47fb1.chunk.js": "/geojson-map-demo/static/js/787.89a47fb1.chunk.js",
     "index.html": "/geojson-map-demo/index.html",
     "main.5127c13f.css.map": "/geojson-map-demo/static/css/main.5127c13f.css.map",
-    "main.b34db498.js.map": "/geojson-map-demo/static/js/main.b34db498.js.map",
+    "main.2c3f27ab.js.map": "/geojson-map-demo/static/js/main.2c3f27ab.js.map",
     "474.4c85469f.chunk.js.map": "/geojson-map-demo/static/js/474.4c85469f.chunk.js.map",
     "787.89a47fb1.chunk.js.map": "/geojson-map-demo/static/js/787.89a47fb1.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.5127c13f.css",
-    "static/js/main.b34db498.js"
+    "static/js/main.2c3f27ab.js"
   ]
 }
