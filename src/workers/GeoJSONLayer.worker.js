@@ -1,6 +1,8 @@
+import geojsonUtils from "geojson-utils";
 import geojsonvt from "geojson-vt";
 
 
+var originalData = null
 var mappedVectorTile = null
 var waitForFetch = waitFor()
 var styleSet = {}
@@ -30,14 +32,36 @@ function processMessage(type, data){
         }case 'tile':
             handleTile(data.canvas, data.coords)
             break;
+        case 'click':
+            handleClick(data.latlng)
+            break;
         default:
             console.warn(`Ignored event type: ${type}`)
             break;
     }
 }
+function pointToGeoJSON(p, geojson) { // Copied from leafletPip but modified
+    if (typeof p.lat === 'number')
+        p = [p.lng, p.lat];
+
+    const features = geojson.features
+    const maxLength = features.length
+    const point = {
+        type: 'Point',
+        coordinates: p
+    }
+    for(let i = 0; i < maxLength; i++)
+        if (geojsonUtils.pointInPolygon(point, features[i].geometry))
+            return features[i]
+}
+function handleClick(latlng){
+    const json = pointToGeoJSON(latlng, originalData)
+    post('click', {feature: json, latlng})
+}
 async function fetchingJson(url, options){
     const data = await fetch(url)
     const geojson = await data.json()
+    originalData = geojson
     mappedVectorTile = geojsonvt(geojson, options)
     waitForFetch.set()
 }
@@ -48,11 +72,8 @@ async function handleTile(canvas, coords){
     const tile = mappedVectorTile.getTile(z, x, y)
     const features = tile?.features?? []
     renderTile(ctx, features)
-    finishRender(coords)
 }
-function finishRender(coords){
-    post('tile', { coords })
-}
+
 function renderTile(ctx, features){
     for(let i = 0; i < features.length; i++)
         featureDraw(ctx, features[i])
@@ -85,16 +106,16 @@ function featureDraw(ctx, feature){
             break
     }
     if (type === 1 || type === 3)
-        ctx.fill('evenodd')
+        ctx.fill(styleSet.fillRule ?? 'evenodd')
 
     
     ctx.stroke()
 
 }
 function setStyle(ctx){
-    ctx.lineWidth = styleSet.width ?? 2
-    ctx.fillStyle = styleSet.fill ?? 'pink'
-    ctx.strokeStyle = styleSet.stroke ?? 'cyan'
+    ctx.lineWidth = styleSet.weight ?? 2
+    ctx.fillStyle = styleSet.fillColor ?? 'pink'
+    ctx.strokeStyle = styleSet.color ?? 'cyan'
 }
 
 function post(type, data){

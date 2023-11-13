@@ -28,6 +28,9 @@ class GeoJSONWorker{
     post({ type, data }, ...args){
         this.worker.postMessage({ type, data }, ...args)
     }
+    click(latlng){
+        this.post({ type: 'click', data: { latlng } })
+    }
     renderTile(coords, canvas){
         this.post({
             type: 'tile',
@@ -44,7 +47,61 @@ const GeoLayerGrid = L.GridLayer.extend({
         L.setOptions(this, options)
         this.tileMapped = new Map()
         this.worker = new GeoJSONWorker(url, this.options.style, this.options.vtOptions)
+        this.worker.listen('click', this.featureClicked.bind(this))
+        this.clickCallback = this.onClickMap.bind(this)
+        this.highlightLayer = null
+        this.map = null
+        this.bindedPopup = this.options.callbackConfig?.popup
+    },
+    onClickMap: function(e){
+        const latlng = e.latlng
+        this.dispatchClick({...latlng})
+    },
+    bindPopup: function(callback){
+        this.bindedPopup = callback
+    },
+    onAdd: function(map){
+        L.GridLayer.prototype.onAdd.apply(this, map)
+        map.on('click', this.clickCallback)
+        this.map = map		
+        L.DomUtil.addClass(map._container, 'crosshair-cursor-enabled')
+    },
+    onRemove: function(map){
+        L.GridLayer.prototype.onRemove.call(this, map)
+        this.ensureRemoveHighlight()
+        map.off('click', this.clickCallback)
+        L.DomUtil.removeClass(map._container, 'crosshair-cursor-enabled')
+    },
+    dispatchClick: function(latlng){
+        this.worker.click(latlng)
+    },
+    ensureRemoveHighlight: function(){
+        if (this.highlightLayer)
+            this.map.removeLayer(this.highlightLayer)
+    },
+    highlightFeature: function(feature){
+        this.ensureRemoveHighlight()
+        if (!feature)
+            return
 
+        const featureCollection = {
+            type: 'FeatureCollection',
+            features: [feature]
+        }
+        this.highlightLayer = new L.geoJson(featureCollection, this.options.style.highlight)
+        this.map.addLayer(this.highlightLayer)
+
+    },
+    featureClicked: function({feature, latlng}){
+        this.highlightFeature(feature)
+        if (!this.bindedPopup || !feature)
+            return
+
+        const content = this.bindedPopup(feature)
+        L.popup()
+            .setLatLng(latlng)
+            .setContent(content)
+            .openOn(this.map)
     },
     createTile: function(coords){
         const tile = L.DomUtil.create('canvas', 'leaflet-tile')
@@ -76,9 +133,11 @@ export default function GeoJSONLayer({url, options}){
         })
         map.addLayer(layer)
         return () => {
-            L.DomUtil.removeClass(map._container, 'crosshair-cursor-enabled')
-            map.removeLayer(layer)
-            layer.close() // cleanup
+            try{
+                map.removeLayer(layer)
+            }finally{
+                layer.close() // cleanup
+            }
         }
     })
     return null

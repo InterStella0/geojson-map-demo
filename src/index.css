@@ -31,3 +31,21 @@ code {
 .crosshair-cursor-enabled{
   cursor: default !important;
 }
+.field-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.field-table td, .field-table th {
+  border: 1px solid #ddd;
+  padding: .5rem;
+}
+
+.field-table tr:nth-child(even){background-color: #f2f2f2;}
+
+.field-table th {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  text-align: left;
+  background-color: rgb(255, 164, 229);
+  color: white;
+}
