@@ -44,7 +44,7 @@ class GeoJSONWorker{
 
 const GeoLayerGrid = L.GridLayer.extend({
     initialize: function(url, options) {
-        L.setOptions(this, options)
+        L.setOptions(this, {...options, attribution: "<a href='https://github.com/InterStella0'>InterStella0</a>"})
         this.tileMapped = new Map()
         this.worker = new GeoJSONWorker(url, this.options.style, this.options.vtOptions)
         this.worker.listen('click', this.featureClicked.bind(this))
