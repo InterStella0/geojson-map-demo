@@ -19,7 +19,8 @@ function getLayerStyle(){
         hover: {
             color: 'purple',
             fillColor: 'pink'
-        }
+        },
+        mouseEndDelay: 1 // detect when mouse stops in ms, for hovering
     }
 }
 function popupConfig(){
